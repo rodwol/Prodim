@@ -1,0 +1,48 @@
+.dashboard {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.dashboard-nav {
+  margin-bottom: 20px;
+  display: flex;
+  min-height: 60px;
+}
+
+.dashboard-nav a {
+  margin-right: 15px;
+  text-decoration: none;
+  color: #282c34;
+  font-weight: bold;
+}
+
+.dashboard-nav a.active {
+  color: #ff6347;
+}
+
+.cognitive-test, .lifestyle-tracker, .healthcare-professionals {
+  margin-top: 20px;
+}
+
+.question {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  margin: 5px 0;
+}
+
+button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background-color: #282c34;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #ff6347;
+}

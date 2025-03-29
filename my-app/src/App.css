@@ -1,0 +1,46 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+body {
+  background-image: url('./pages/assets/pe.jpg');
+  background-size: cover;  /* Ensure full coverage */
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: none;  /* Remove blur effect */
+  image-rendering: crisp-edges; /* Makes images sharper */
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: rgb(255, 255, 255);
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

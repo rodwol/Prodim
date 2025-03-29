@@ -1,0 +1,69 @@
+/* General styles for the services page */
+.services-page {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    text-align: left;
+    font-family: Arial, sans-serif;
+    background-image: url('./assets/bavi.mp4'); /* Path to your image */
+    background-size: cover; /* Ensure the image covers the entire component */
+    background-position: center; /* Center the image */
+    background-repeat: no-repeat;
+    min-height: 100vh; /* Ensure the component takes up at least the full viewport height */
+    padding: 20px;
+
+  }
+  /* Common styles for each service section */
+  .service-section {
+    flex:1;
+    padding: 100px 20px; /* Add padding to make sections taller */
+    margin: 20px 0; /* Add margin between sections */
+    color: white; /* Text color */
+    background-size: cover; /* Ensure the background image covers the section */
+    background-position: center; /* Center the background image */
+    border-radius: 10px; /* Rounded corners for sections */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  /* Cognitive Assessments Section */
+  .cognitive-assessments {
+    background-image: url('./assets/cognitive-bg.jpg'); /* Path to your background image */
+  }
+  
+  /* Health Dashboard Section */
+  .health-dashboard {
+    background-image: url('./assets/health-bg.png'); /* Path to your background image */
+  }
+  
+  /* Community Support Section */
+  .community-support {
+    background-image: url('./assets/community-bg.jpeg'); /* Path to your background image */
+  }
+  
+  /* Heading styles */
+  .service-section h2 {
+    font-size: 32px;
+    margin-bottom: 50px;
+    position: absolute;
+    bottom: 280px;
+    padding: 10px;
+    color: rgb(0, 0, 0);
+    width: 100%;
+    text-align: center;
+
+  }
+  
+  /* Paragraph styles */
+  .service-section p {
+    font-size: 18px;
+    max-width: 600px;
+    color: rgb(98, 243, 163);
+    margin: 0 auto; /* Center the text */
+    top: 400px;
+  }

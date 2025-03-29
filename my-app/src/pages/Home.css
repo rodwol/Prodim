@@ -1,0 +1,73 @@
+.Home {
+  text-align: left;
+  font-family: Arial, sans-serif;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  height: 100vh; /* Ensures full viewport height */
+  width: 100vw; /* Ensures full viewport width */
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Pushes the header to the bottom */
+}
+
+/* Keeps the main content centered */
+.Home-main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.Home-main h1 {
+  color: #0b4a0f;
+  font-size: 120px;
+  padding: 10px;
+  text-align: center;
+  min-width: 100%;
+  overflow: hidden;
+}
+
+/* Puts header at the bottom */
+.Home-header {
+  padding: 20px;
+  color: white;
+  display: flex; /* Use Flexbox for layout */
+  justify-content: space-between; /* Space between h2 and nav */
+  align-items: center; /* Vertically center items */
+  background-color: rgba(0, 0, 0, 0.5); /* Optional: semi-transparent background */
+  width: 100%;
+}
+
+/* Ensures h2 text stays left-aligned */
+.Home-header h2 {
+  color: #072d47;
+  font-size: 48px;
+  margin: 0;
+  text-align: left;
+}
+
+/* Aligns navigation items to the right */
+nav ul {
+  list-style-type: none;
+  justify-content: flex-end;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  
+}
+
+nav ul li {
+  margin: 0 10px;
+  cursor: pointer;
+}
+
+h1, h2, h3 {
+  display: block;
+  position: relative;
+  margin: 20px 0;  /* Adds spacing above and below */
+  line-height: 1.5;
+}
+

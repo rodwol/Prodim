@@ -37,6 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'api',
+    'corsheaders',
+    'rest_framework'
 ]
 
 MIDDLEWARE = [
@@ -46,6 +49,8 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -76,7 +81,7 @@ WSGI_APPLICATION = 'dementia_prevention.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / "db.sqlite3",
     }
 }
 
@@ -121,3 +126,5 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CORS_ALLOW_ALL_ORIGINS = True
