@@ -73,9 +73,9 @@ python manage.py runserver
 
 | Type          | Requirement                          | Metric                    | Phase       |
 |---------------|--------------------------------------|---------------------------|-------------|
-| Performance   | Support 50 concurrent users         | ≤2s response time         | Live        |
-| Security      | HIPAA-compliant data storage        | AES-256 encryption        | Live        |
-| Localization  | Swahili/French language support     | 2+ languages              | Phase 2     |
+| Performance   | To Support 50 concurrent users      | ≤2s response time         | Live        |
+| Security      |                                     | AES-256 encryption        | Live        |
+| Localization  | English Language                    | 2+ languages              | Phase 2     |
 
 ---
 
