@@ -51,7 +51,7 @@ HealthTrack is a software solution designed to address cognitive health disparit
 
 ## 4. Installation Guide
 ### 4.1 Local Development
-```bash
+
 # Frontend
 cd PRODIM/my-app && npm install && npm start
 
