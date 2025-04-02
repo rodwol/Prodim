@@ -1,0 +1,89 @@
+.lifestyle-history {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .history-container {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+  }
+  
+  .entries-list {
+    flex: 1;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding-right: 10px;
+  }
+  
+  .entry-card {
+    background: white;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .entry-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  
+  .entry-card.selected {
+    border-left: 4px solid #3498db;
+    background-color: #f8fafc;
+  }
+  
+  .entry-summary {
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+    color: #4a5568;
+  }
+  
+  .entry-detail {
+    flex: 2;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .detail-section {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .detail-section h4 {
+    color: #3498db;
+    margin-bottom: 10px;
+  }
+  
+  /* Scrollbar styling */
+  .entries-list::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .entries-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+  
+  .entries-list::-webkit-scrollbar-thumb {
+    background: #3498db;
+    border-radius: 3px;
+  }
+  
+  /* Responsive design */
+  @media (max-width: 768px) {
+    .history-container {
+      flex-direction: column;
+    }
+    
+    .entries-list {
+      max-height: 300px;
+    }
+  }

@@ -46,3 +46,39 @@ button {
 button:hover {
   background-color: #ff6347;
 }
+
+.dashboard-nav {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.dashboard-nav a {
+  padding: 8px 15px;
+  text-decoration: none;
+  color: #333;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.dashboard-nav a:hover {
+  background: #f0f0f0;
+}
+
+.dashboard-nav a.active {
+  background: #3498db;
+  color: white;
+}
+
+/* Caregiver-specific styling */
+.dashboard-nav a[href*="caregiver-view"] {
+  background: #e74c3c;
+  color: white;
+  margin-left: auto; /* Pushes to far right */
+}
+
+.dashboard-nav a[href*="caregiver-view"]:hover {
+  background: #c0392b;
+}

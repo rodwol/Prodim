@@ -1,66 +1,70 @@
-/* CognitiveTest.css */
+/* Main container */
 .cognitive-test {
-  background-color: rgb(163, 140, 49);
+  background-color: #f5f5f5;
   max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
+  margin: 40px auto;
+  padding: 25px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  border-radius: 10px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
 }
 
+/* Header */
 .cognitive-test h3 {
   color: #2c3e50;
   text-align: center;
-  margin-bottom: 25px;
+  margin-bottom: 20px;
   font-size: 24px;
   border-bottom: 2px solid #3498db;
   padding-bottom: 10px;
 }
 
+/* Progress Indicator */
 .progress-indicator {
   text-align: center;
-  margin-bottom: 15px;
   font-weight: 600;
   color: #34495e;
+  margin-bottom: 15px;
 }
 
+/* Question Box */
 .question {
-  background-color: rgb(127, 95, 95);
-  color: black;
+  background-color: #2c3e50;
+  color: white;
   padding: 20px;
+  border-radius: 10px;
   margin-bottom: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
 }
 
 .question p {
-  font-weight: 600;
-  color: #34495e;
-  margin-bottom: 15px;
   font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
 }
 
+/* Answer Options */
 .question label {
   display: block;
-  padding: 10px 15px;
-  margin: 5px 0;
-  background-color: #000000;
+  padding: 12px;
+  background-color: #34495e;
   color: white;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: background 0.3s;
+  font-size: 16px;
 }
 
 .question label:hover {
-  background-color: #0f0303;
+  background-color: #1abc9c;
 }
 
 .question input[type="radio"] {
   margin-right: 10px;
-  accent-color: #3498db;
+  accent-color: #1abc9c;
 }
 
+/* Navigation Buttons */
 .navigation-buttons {
   display: flex;
   justify-content: space-between;
@@ -68,12 +72,12 @@
 }
 
 .nav-button, .submit-button {
-  padding: 10px 20px;
+  padding: 12px 18px;
   border: none;
-  border-radius: 5px;
+  border-radius: 8px;
   font-size: 16px;
   cursor: pointer;
-  transition: background 0.3s ease;
+  transition: background 0.3s;
 }
 
 .prev-button {
@@ -86,12 +90,12 @@
 }
 
 .next-button {
-  background-color: #007bff;
+  background-color: #3498db;
   color: white;
 }
 
 .next-button:hover {
-  background-color: #0056b3;
+  background-color: #217dbb;
 }
 
 .next-button:disabled, .submit-button:disabled {
@@ -108,29 +112,37 @@
   background-color: #218838;
 }
 
+/* Score Display */
 .score-display {
   text-align: center;
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #04090c;
-  border-radius: 5px;
-  color: #000000;
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #2c3e50;
+  color: white;
+  border-radius: 10px;
   font-size: 18px;
-  font-weight: 600;
 }
 
 .score-value {
-  font-size: 24px;
-  font-weight: 700;
-  margin: 10px 0;
+  font-size: 28px;
+  font-weight: bold;
 }
 
 .score-total {
   font-size: 18px;
-  color: #6c757d;
+  color: #b0b0b0;
 }
 
-/* Responsive design */
+/* Loading and Error Messages */
+.loading, .error, .no-questions {
+  text-align: center;
+  font-size: 18px;
+  font-weight: bold;
+  color: #c0392b;
+  margin-top: 20px;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
   .cognitive-test {
     padding: 15px;
@@ -149,3 +161,79 @@
     flex-direction: column;
   }
 }
+.voice-recognition {
+  text-align: center;
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.voice-recognition p {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.voice-recognition button {
+  padding: 10px;
+  margin: 5px;
+  border: none;
+  border-radius: 5px;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.voice-recognition button:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+/* Add these to your CSS file */
+.voice-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.voice-controls button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.voice-controls button.active {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.transcript-box {
+  border: 1px solid #ddd;
+  padding: 15px;
+  border-radius: 5px;
+  margin-top: 10px;
+}
+
+.match-status {
+  color: #666;
+  font-style: italic;
+}
+
+.success-message {
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+.nav-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nav-button.active {
+  background-color: #2196F3;
+  color: white;
+}
+
+
