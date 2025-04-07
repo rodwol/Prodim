@@ -7,13 +7,26 @@ export function AuthProvider({ children }) {
   const [authData, setAuthData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const getCSRFToken = () => {
+    return document.cookie
+      .split('; ')
+      .find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
+  };
+
+  const fetchCSRFToken = async () => {
+    try {
+      await axios.get('http://localhost:8000/api/csrf/', { withCredentials: true });
+    } catch (error) {
+      console.error('CSRF token fetch failed:', error);
+    }
+  };
+
   const login = async (credentials) => {
     try {
-      const response = await axios.post('/api/login/', credentials, {
+      await fetchCSRFToken(); // Ensure CSRF token is set
+      const response = await axios.post('http://localhost:8000/api/login_view/', credentials, {
         withCredentials: true,
-        headers: {
-          'X-CSRFToken': getCSRFToken()
-        }
+        headers: { 'X-CSRFToken': getCSRFToken() }
       });
       setAuthData(response.data);
       return true;
@@ -25,11 +38,10 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await axios.post('/api/logout/', {}, {
+      await fetchCSRFToken();
+      await axios.post('http://localhost:8000/api/logout/', {}, {
         withCredentials: true,
-        headers: {
-          'X-CSRFToken': getCSRFToken()
-        }
+        headers: { 'X-CSRFToken': getCSRFToken() }
       });
       setAuthData(null);
     } catch (error) {
@@ -39,12 +51,8 @@ export function AuthProvider({ children }) {
 
   const checkAuth = async () => {
     try {
-      const response = await axios.get('/api/check-auth/', {
-        withCredentials: true
-      });
-      if (response.data.authenticated) {
-        setAuthData(response.data.user);
-      }
+      const response = await axios.get('http://localhost:8000/api/check-auth/', { withCredentials: true });
+      if (response.data.authenticated) setAuthData(response.data.user);
     } catch (error) {
       console.error('Auth check failed:', error);
     } finally {
@@ -52,26 +60,10 @@ export function AuthProvider({ children }) {
     }
   };
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const getCSRFToken = () => {
-    const cookieValue = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('csrftoken='))
-      ?.split('=')[1];
-    return cookieValue;
-  };
+  useEffect(() => { checkAuth(); }, []);
 
   return (
-    <AuthContext.Provider value={{ 
-      authData, 
-      login, 
-      logout, 
-      loading,
-      getCSRFToken
-    }}>
+    <AuthContext.Provider value={{ authData, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

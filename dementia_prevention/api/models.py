@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.timezone import now
+from django.utils import timezone
 from django.contrib.auth.models import User
 
 class Patient(models.Model):
@@ -29,8 +30,10 @@ class LifestyleData(models.Model):
     user = models.ForeignKey(
         User, 
         on_delete=models.CASCADE, 
-        related_name='lifestyle_entries'  # Changed from 'lifestyle_data'
+        related_name='lifestyle_entries'
     )
+    created_at = models.DateTimeField(default=timezone.now)
+    date = models.DateField(default=timezone.now)  # 🆕 Added date field
     physical_activity = models.IntegerField(default=0)
     healthy_diet = models.IntegerField(default=0)
     social_engagement = models.IntegerField(default=0)
@@ -39,7 +42,7 @@ class LifestyleData(models.Model):
     alcohol = models.IntegerField(default=0)
     stress = models.IntegerField(default=1)
     notes = models.TextField(null=True, blank=True)
-    
+
     def __str__(self):
         return f"Lifestyle data for {self.user.username} on {self.date}"
 

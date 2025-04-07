@@ -1,17 +1,37 @@
 import React from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import './Dashboard.css';
 
 function Dashboard() {
+  const navigate = useNavigate();
   const location = useLocation();
   const { authData } = useAuth();
+  const [dashboardData, setDashboardData] = useState(null);
 
   const isActive = (path) => {
     return location.pathname === `/dashboard/${path}` || 
            location.pathname.startsWith(`/dashboard/${path}/`);
   };
+  // Fetch user dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/dashboard');
+        if (response.ok) {
+          const data = await response.json();
+          setDashboardData(data);
+        } else {
+          console.error('Error fetching dashboard data');
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      }
+    };
 
+    fetchDashboardData();
+  }, []);
   return (
     <div className="dashboard">
       <h2>Health Dashboard</h2>

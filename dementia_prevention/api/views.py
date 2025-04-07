@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.authentication import SessionAuthentication
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.views import APIView
@@ -16,6 +17,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
 from django.contrib.auth import authenticate, login
 from django.conf import settings
+from datetime import datetime, timedelta
+import json
+import random
+from django.db.models import Avg, Max, Min
 from .models import (
     Patient, 
     Caregiver, 
@@ -36,10 +41,7 @@ from .serializers import (
     BrainHealthAssessmentSerializer,
     RecommendationSerializer
 )
-import json
-import random
-from datetime import datetime, timedelta
-from django.db.models import Avg, Max, Min
+from .utils import calculate_brain_health_score, generate_recommendations
 
 logger = logging.getLogger(__name__)
 
@@ -213,18 +215,11 @@ def signup(request):
     )
 
 
-@api_view(['POST'])
+@api_view(['POST', 'GET'])
 def login_view(request):
     # Get username and password from request data
     username = request.data.get('username')
     password = request.data.get('password')
-
-    if request.method == 'GET':
-        return Response(
-            {"detail": "Use POST to authenticate"}, 
-            status=status.HTTP_405_METHOD_NOT_ALLOWED,
-            headers={'Allow': 'POST'}
-        )
 
     if not username or not password:
         return Response(
@@ -243,24 +238,14 @@ def login_view(request):
     
     # Login the user (creates session)
     login(request, user)
-    
-    # Check user profiles
-    try:
-        is_caregiver = hasattr(user, 'caregiver')
-        is_patient = hasattr(user, 'patient')
-    except Exception as e:
-        return Response(
-            {'detail': 'Error checking user profile'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+
     
     return Response({
         'user_id': user.id,
         'username': user.username,
         'email': user.email,
-        'is_caregiver': is_caregiver,
-        'is_patient': is_patient
     })
+
 @api_view(['GET'])
 def check_auth(request):
     if request.user.is_authenticated:
@@ -270,13 +255,13 @@ def check_auth(request):
                 'id': request.user.id,
                 'username': request.user.username
             },
-            'is_caregiver': hasattr(request.user, 'caregiver_profile'),
-            'is_patient': hasattr(request.user, 'patient_profile')
+            'is_caregiver': hasattr(request.user, 'caregiver'),
+            'is_patient': hasattr(request.user, 'patient')
         })
     return Response({'authenticated': False})
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@api_view(['POST', 'GET'])
+@login_required
 def user_dashboard(request):
     """Main dashboard for both patients and caregivers"""
     try:
@@ -388,173 +373,409 @@ def json_login_required(view_func):
         return view_func(request, *args, **kwargs)
     return wrapped_view
 
-@require_GET
-@login_required
+ANSWER_KEY = {
+    1: '12',
+    2: 'July',
+    3: 'Paris',
+    4: '5',
+    5: 'Mars',
+    6: 'Blue Whale',
+    7: '7',
+    8: '8',
+    9: 'Carbon Dioxide',
+    10: 'William Shakespeare',
+    
+    # New 40 answers (questions 11-50)
+    11: 'Joe Biden',
+    12: '(Open-ended)',  # Personal memory
+    13: 'Apple, Apricot, Avocado',
+    14: '$30',
+    15: '36',
+    16: 'Thursday',
+    17: 'Cold',
+    18: 'Blue',
+    19: 'DLROW',
+    20: 'Carrot',
+    21: '10',
+    22: '6',
+    23: 'George Washington',
+    24: 'Atlantic',
+    25: 'Blue',
+    26: 'Square',
+    27: 'Triangle',
+    28: '(Assess response)',
+    29: '(Assess sequencing)',
+    30: '(Open-ended)',
+    31: '(Open-ended)',
+    32: '93',
+    33: 'They weigh the same',
+    34: '(Open-ended)',
+    35: 'Pen',
+    36: 'Yellow',
+    37: '7',
+    38: '9',
+    39: 'Pencil',
+    40: '(Assess recall)',
+    41: '3:00',
+    42: 'December',
+    43: '(Open-ended)',
+    44: '(Assess response)',
+    45: 'Scissors',
+    46: '4',
+    47: '(Open-ended)',
+    48: 'Night',
+    49: 'Octagon',
+    50: 'Shoes'
+}
+
+# Public-facing questions (answers stripped out)
+QUESTIONS = [
+    {
+        'id': 1,
+        'question': 'What is 5 + 7?',
+        'options': ['10', '11', '12', '13']
+    },
+    {
+        'id': 2,
+        'question': 'Which month comes after June?',
+        'options': ['May', 'July', 'August', 'September']
+    },
+    {
+        'id': 3,
+        'question': 'What is the capital of France?',
+        'options': ['Berlin', 'Madrid', 'Paris', 'Rome']
+    },
+    {
+        'id': 4,
+        'question': 'What is 15 ÷ 3?',
+        'options': ['3', '4', '5', '6']
+    },
+    {
+        'id': 5,
+        'question': 'Which planet is known as the Red Planet?',
+        'options': ['Earth', 'Mars', 'Jupiter', 'Venus']
+    },
+    {
+        'id': 6,
+        'question': 'What is the largest mammal?',
+        'options': ['Elephant', 'Blue Whale', 'Giraffe', 'Hippopotamus']
+    },
+    {
+        'id': 7,
+        'question': 'How many continents are there on Earth?',
+        'options': ['5', '6', '7', '8']
+    },
+    {
+        'id': 8,
+        'question': 'What is the square root of 64?',
+        'options': ['6', '7', '8', '9']
+    },
+    {
+        'id': 9,
+        'question': 'Which gas do plants use for photosynthesis?',
+        'options': ['Oxygen', 'Carbon Dioxide', 'Nitrogen', 'Hydrogen']
+    },
+    {
+        'id': 10,
+        'question': 'Who wrote "Romeo and Juliet"?',
+        'options': ['Charles Dickens', 'William Shakespeare', 'Mark Twain', 'Jane Austen']
+    },
+
+    # New 40 questions (id 11-50)
+    {
+        'id': 11,
+        'question': 'What is the name of the current U.S. president?',
+        'options': ['Joe Biden', 'Donald Trump', 'Barack Obama', 'George Bush']
+    },
+    {
+        'id': 12,
+        'question': 'What was the last holiday you celebrated?',
+        'options': ['Christmas', 'Thanksgiving', 'Easter', 'New Year\'s']
+    },
+    {
+        'id': 13,
+        'question': 'Name three fruits that start with "A".',
+        'options': ['Apple, Apricot, Avocado', 'Banana, Blueberry, Blackberry', 'Cherry, Coconut, Cantaloupe', 'Grape, Guava, Gooseberry']
+    },
+    {
+        'id': 14,
+        'question': 'If you buy an item for \$20 and pay with \$50, how much change do you get?',
+        'options': ['\$20', '\$25', '\$30', '\$35']
+    },
+    {
+        'id': 15,
+        'question': 'What is 12 × 3?',
+        'options': ['24', '36', '48', '60']
+    },
+    {
+        'id': 16,
+        'question': 'If today is Monday, what day is it in three days?',
+        'options': ['Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    },
+    {
+        'id': 17,
+        'question': 'What is the opposite of "hot"?',
+        'options': ['Warm', 'Cold', 'Wet', 'Dry']
+    },
+    {
+        'id': 18,
+        'question': 'Complete this sentence: "The sky is ___."',
+        'options': ['Green', 'Blue', 'Red', 'Black']
+    },
+    {
+        'id': 19,
+        'question': 'Spell "WORLD" backward.',
+        'options': ['DLROW', 'DROWL', 'DLORW', 'DRLOW']
+    },
+    {
+        'id': 20,
+        'question': 'Which does not belong: Apple, Banana, Carrot, Orange?',
+        'options': ['Apple', 'Banana', 'Carrot', 'Orange']
+    },
+    {
+        'id': 21,
+        'question': 'What comes next: 2, 4, 6, 8, ___?',
+        'options': ['9', '10', '12', '14']
+    },
+    {
+        'id': 22,
+        'question': 'How many quarters make \$1.50?',
+        'options': ['3', '4', '5', '6']
+    },
+    {
+        'id': 23,
+        'question': 'Who was the first U.S. president?',
+        'options': ['Thomas Jefferson', 'George Washington', 'Abraham Lincoln', 'John Adams']
+    },
+    {
+        'id': 24,
+        'question': 'Which ocean is between the U.S. and Europe?',
+        'options': ['Pacific', 'Indian', 'Atlantic', 'Arctic']
+    },
+    {
+        'id': 25,
+        'question': 'What is the main color of the U.S. flag?',
+        'options': ['Red', 'Blue', 'Green', 'White']
+    },
+    {
+        'id': 26,
+        'question': 'Which shape has four equal sides?',
+        'options': ['Triangle', 'Circle', 'Square', 'Rectangle']
+    },
+    {
+        'id': 27,
+        'question': 'Which of these is a triangle? (○, △, □, ☆)',
+        'options': ['○', '△', '□', '☆']
+    },
+    {
+        'id': 28,
+        'question': 'Tap the table when I say "A": B, C, A, D, A, F.',
+        'options': ['(Assess response)']
+    },
+    {
+        'id': 29,
+        'question': 'Name the months of the year in order.',
+        'options': ['(Assess sequencing)']
+    },
+    {
+        'id': 30,
+        'question': 'What is your birth date?',
+        'options': ['(Open-ended)']
+    },
+    {
+        'id': 31,
+        'question': 'Where were you born?',
+        'options': ['(Open-ended)']
+    },
+    {
+        'id': 32,
+        'question': 'What is 100 minus 7?',
+        'options': ['93', '83', '73', '63']
+    },
+    {
+        'id': 33,
+        'question': 'Which is heavier: a pound of feathers or a pound of bricks?',
+        'options': ['Feathers', 'Bricks', 'They weigh the same', 'Depends']
+    },
+    {
+        'id': 34,
+        'question': 'What is the capital of your country?',
+        'options': ['(Open-ended)']
+    },
+    {
+        'id': 35,
+        'question': 'What do you use to write on paper?',
+        'options': ['Spoon', 'Pen', 'Hammer', 'Leaf']
+    },
+    {
+        'id': 36,
+        'question': 'What is the color of a ripe banana?',
+        'options': ['Red', 'Blue', 'Yellow', 'Green']
+    },
+    {
+        'id': 37,
+        'question': 'How many days are in a week?',
+        'options': ['5', '6', '7', '8']
+    },
+    {
+        'id': 38,
+        'question': 'What is the largest number: 5, 3, 9, 2?',
+        'options': ['5', '3', '9', '2']
+    },
+    {
+        'id': 39,
+        'question': 'What is the name of this object? (Show a pencil)',
+        'options': ['🖊️', '✏️', '📏', '🩹']
+    },
+    {
+        'id': 40,
+        'question': 'Repeat these words: "Cat, Ball, Shoe."',
+        'options': ['(Assess recall)']
+    },
+    {
+        'id': 41,
+        'question': 'What time is it when the big hand is on 12 and the small hand is on 3?',
+        'options': ['12:00', '3:00', '6:00', '9:00']
+    },
+    {
+        'id': 42,
+        'question': 'Which is not a season: Winter, Summer, December, Spring?',
+        'options': ['Winter', 'Summer', 'December', 'Spring']
+    },
+    {
+        'id': 43,
+        'question': 'What is the name of the current year?',
+        'options': ['(Open-ended)']
+    },
+    {
+        'id': 44,
+        'question': 'Point to the ceiling.',
+        'options': ['(Assess response)']
+    },
+    {
+        'id': 45,
+        'question': 'What do you call the thing you use to cut paper?',
+        'options': ['Spoon', 'Scissors', 'Plate', 'Sock']
+    },
+    {
+        'id': 46,
+        'question': 'How many legs does a chair usually have?',
+        'options': ['1', '2', '3', '4']
+    },
+    {
+        'id': 47,
+        'question': 'What is the name of your spouse/partner?',
+        'options': ['(Open-ended)']
+    },
+    {
+        'id': 48,
+        'question': 'What is the opposite of "day"?',
+        'options': ['Night', 'Morning', 'Evening', 'Noon']
+    },
+    {
+        'id': 49,
+        'question': 'What is the shape of a stop sign?',
+        'options': ['Circle', 'Square', 'Octagon', 'Triangle']
+    },
+    {
+        'id': 50,
+        'question': 'What do you wear on your feet?',
+        'options': ['Hat', 'Shoes', 'Gloves', 'Scarf']
+    }
+]
+
+@api_view(['GET', 'POST'])
 def cognitive_test_questions(request):
-        questions = [
-        {
-            'id': 1,
-            'question': 'What is 5 + 7?',
-            'options': ['10', '11', '12', '13'],
-            'answer': '12'
-        },
-        {
-            'id': 2,
-            'question': 'Which month comes after June?',
-            'options': ['May', 'July', 'August', 'September'],
-            'answer': 'July'
-        },
-        {
-            'id': 3,
-            'question': 'What is the capital of France?',
-            'options': ['Berlin', 'Madrid', 'Paris', 'Rome'],
-            'answer': 'Paris'
-        },
-        {
-            'id': 4,
-            'question': 'What is 15 ÷ 3?',
-            'options': ['3', '4', '5', '6'],
-            'answer': '5'
-        },
-        {
-            'id': 5,
-            'question': 'Which planet is known as the Red Planet?',
-            'options': ['Earth', 'Mars', 'Jupiter', 'Venus'],
-            'answer': 'Mars'
-        },
-        {
-            'id': 6,
-            'question': 'What is the largest mammal?',
-            'options': ['Elephant', 'Blue Whale', 'Giraffe', 'Hippopotamus'],
-            'answer': 'Blue Whale'
-        },
-        {
-            'id': 7,
-            'question': 'How many continents are there on Earth?',
-            'options': ['5', '6', '7', '8'],
-            'answer': '7'
-        },
-        {
-            'id': 8,
-            'question': 'What is the square root of 64?',
-            'options': ['6', '7', '8', '9'],
-            'answer': '8'
-        },
-        {
-            'id': 9,
-            'question': 'Which gas do plants use for photosynthesis?',
-            'options': ['Oxygen', 'Carbon Dioxide', 'Nitrogen', 'Hydrogen'],
-            'answer': 'Carbon Dioxide'
-        },
-        {
-            'id': 10,
-            'question': 'Who wrote "Romeo and Juliet"?',
-            'options': ['Charles Dickens', 'William Shakespeare', 'Mark Twain', 'Jane Austen'],
-            'answer': 'William Shakespeare'
-        }
-    ]
-        return JsonResponse({'questions': questions})
+    return JsonResponse({'questions': QUESTIONS})
 
 
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@api_view(['POST', 'GET'])
 def submit_cognitive_test(request):
-    """Submit cognitive test answers and get results"""
     try:
-        if not hasattr(request.user, 'patient'):
-            return Response(
-                {'error': 'Only patients can take cognitive tests'}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
-            
-        patient = request.user.patient
-        answers = request.data.get('answers', [])
-        
+        data = request.data
+        answers = data.get('answers', [])
+
         if not answers:
-            return Response(
-                {'error': 'No answers provided'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Calculate score
+            return Response({'error': 'No answers provided'}, status=status.HTTP_400_BAD_REQUEST)
+
         total_questions = len(answers)
         correct_answers = 0
-        
-        for answer in answers:
-            question_id = answer.get('question_id')
-            user_answer = answer.get('answer')
-            
-            try:
-                question = CognitiveTestQuestion.objects.get(id=question_id)
-                if user_answer == question.correct_answer:
-                    correct_answers += 1
-            except CognitiveTestQuestion.DoesNotExist:
-                continue
-        
-        score = round((correct_answers / total_questions) * 10, 1)  # Score out of 10
-        
-        # Save test result
-        test_result = CognitiveTestResult.objects.create(
-            patient=patient,
-            score=score,
-            total_questions=total_questions,
-            correct_answers=correct_answers,
-            details=answers
-        )
-        
-        # Check if we have lifestyle data to create a brain health assessment
-        latest_lifestyle = LifestyleData.objects.filter(user=request.user).order_by('-date').first()
-        
-        if latest_lifestyle:
-            lifestyle_data = {
-                'physical_activity': latest_lifestyle.physical_activity,
-                'healthy_diet': latest_lifestyle.healthy_diet,
-                'social_engagement': latest_lifestyle.social_engagement,
-                'good_sleep': latest_lifestyle.good_sleep,
-                'smoking': latest_lifestyle.smoking,
-                'alcohol': latest_lifestyle.alcohol,
-                'stress': latest_lifestyle.stress
-            }
-            
-            brain_health_score = calculate_brain_health_score(score, lifestyle_data)
-            
-            # Create or update brain health assessment
-            assessment, created = BrainHealthAssessment.objects.update_or_create(
+
+        for item in answers:
+            q_id = item.get('question_id')
+            user_answer = item.get('answer')
+            correct_answer = ANSWER_KEY.get(q_id)
+            if correct_answer and user_answer == correct_answer:
+                correct_answers += 1
+
+        score = round((correct_answers / total_questions) * 50, 1)
+
+        if request.user.is_authenticated and hasattr(request.user, 'patient'):
+            patient = request.user.patient
+
+            test_result = CognitiveTestResult.objects.create(
                 patient=patient,
-                defaults={
-                    'score': brain_health_score,
-                    'cognitive_score': score,
-                    'lifestyle_data': latest_lifestyle,
-                    'date': datetime.now().date()
-                }
+                score=score,
+                total_questions=total_questions,
+                correct_answers=correct_answers,
+                details=answers
             )
-            
-            # Generate recommendations
-            recommendations = generate_recommendations(brain_health_score, lifestyle_data)
-            
-            for rec in recommendations:
-                Recommendation.objects.create(
+
+            latest_lifestyle = LifestyleData.objects.filter(user=request.user).order_by('-date').first()
+
+            if latest_lifestyle:
+                lifestyle_data = {
+                    'physical_activity': latest_lifestyle.physical_activity,
+                    'healthy_diet': latest_lifestyle.healthy_diet,
+                    'social_engagement': latest_lifestyle.social_engagement,
+                    'good_sleep': latest_lifestyle.good_sleep,
+                    'smoking': latest_lifestyle.smoking,
+                    'alcohol': latest_lifestyle.alcohol,
+                    'stress': latest_lifestyle.stress
+                }
+
+                brain_health_score = calculate_brain_health_score(score, lifestyle_data)
+
+                assessment, created = BrainHealthAssessment.objects.update_or_create(
                     patient=patient,
-                    category=rec['category'],
-                    title=rec['title'],
-                    description=rec['description'],
-                    priority=rec['priority']
+                    defaults={
+                        'score': brain_health_score,
+                        'cognitive_score': score,
+                        'lifestyle_data': latest_lifestyle,
+                        'date': datetime.now().date()
+                    }
                 )
-            
+
+                recommendations = generate_recommendations(brain_health_score, lifestyle_data)
+
+                for rec in recommendations:
+                    Recommendation.objects.create(
+                        patient=patient,
+                        category=rec['category'],
+                        title=rec['title'],
+                        description=rec['description'],
+                        priority=rec['priority']
+                    )
+
+                return Response({
+                    'test_result': CognitiveTestResultSerializer(test_result).data,
+                    'brain_health_assessment': BrainHealthAssessmentSerializer(assessment).data,
+                    'recommendations': recommendations,
+                    'score': score
+                })
+
             return Response({
                 'test_result': CognitiveTestResultSerializer(test_result).data,
-                'brain_health_assessment': BrainHealthAssessmentSerializer(assessment).data,
-                'recommendations': recommendations
+                'score': score
             })
-        
-        return Response(CognitiveTestResultSerializer(test_result).data)
-    
+
+        return Response({
+            'score': score,
+            'message': 'Results not saved as you are not a registered patient'
+        })
+
     except Exception as e:
-        return Response(
-            {'error': str(e)}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -593,114 +814,209 @@ def cognitive_test_history(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-# Lifestyle Tracking Views
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def lifestyle_data(request):
-    """Get or submit lifestyle data"""
+    """
+    Handle lifestyle data submission and retrieval
+    - GET: Returns all lifestyle entries for the authenticated user
+    - POST: Creates a new lifestyle entry for the authenticated user
+    """
     try:
         if request.method == 'GET':
-            # Get all lifestyle entries for the user
             entries = LifestyleData.objects.filter(user=request.user).order_by('-date')
             serializer = LifestyleDataSerializer(entries, many=True)
-            return Response(serializer.data)
+            return Response({
+                'count': entries.count(),
+                'results': serializer.data
+            })
         
         elif request.method == 'POST':
-            # Submit new lifestyle data
+            # Ensure we don't have duplicate entries for the same date
+            date = request.data.get('date', datetime.now().date())
+            if LifestyleData.objects.filter(user=request.user, date=date).exists():
+                return Response(
+                    {'error': 'Lifestyle data already exists for this date'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             serializer = LifestyleDataSerializer(data=request.data)
-            
             if serializer.is_valid():
+                # Save with the authenticated user
                 serializer.save(user=request.user)
                 
-                # Check if we have cognitive data to create/update brain health assessment
-                latest_test = CognitiveTestResult.objects.filter(patient__user=request.user).order_by('-date_taken').first()
-                
-                if latest_test and hasattr(request.user, 'patient'):
-                    lifestyle_data = {
-                        'physical_activity': serializer.validated_data.get('physical_activity', 0),
-                        'healthy_diet': serializer.validated_data.get('healthy_diet', 0),
-                        'social_engagement': serializer.validated_data.get('social_engagement', 0),
-                        'good_sleep': serializer.validated_data.get('good_sleep', 0),
-                        'smoking': serializer.validated_data.get('smoking', 0),
-                        'alcohol': serializer.validated_data.get('alcohol', 0),
-                        'stress': serializer.validated_data.get('stress', 0)
-                    }
-                    
-                    brain_health_score = calculate_brain_health_score(latest_test.score, lifestyle_data)
-                    
-                    # Create or update brain health assessment
-                    assessment, created = BrainHealthAssessment.objects.update_or_create(
-                        patient=request.user.patient,
-                        defaults={
-                            'score': brain_health_score,
-                            'cognitive_score': latest_test.score,
-                            'lifestyle_data': serializer.instance,
-                            'date': datetime.now().date()
-                        }
-                    )
-                    
-                    # Generate recommendations
-                    recommendations = generate_recommendations(brain_health_score, lifestyle_data)
-                    
-                    for rec in recommendations:
-                        Recommendation.objects.create(
-                            patient=request.user.patient,
-                            category=rec['category'],
-                            title=rec['title'],
-                            description=rec['description'],
-                            priority=rec['priority']
-                        )
-                    
-                    return Response({
-                        'lifestyle_data': serializer.data,
-                        'brain_health_assessment': BrainHealthAssessmentSerializer(assessment).data,
-                        'recommendations': recommendations
-                    }, status=status.HTTP_201_CREATED)
+                # If user is a patient, update brain health assessment
+                if hasattr(request.user, 'patient'):
+                    update_brain_health_assessment(request.user)
                 
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     except Exception as e:
+        logger.error(f"Error in lifestyle_data: {str(e)}")
         return Response(
-            {'error': str(e)}, 
+            {'error': 'An error occurred while processing your request'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-@api_view(['GET'])
+def update_brain_health_assessment(user):
+    """Helper function to update brain health assessment after lifestyle data changes"""
+    try:
+        patient = user.patient
+        latest_test = CognitiveTestResult.objects.filter(patient=patient).order_by('-date_taken').first()
+        latest_lifestyle = LifestyleData.objects.filter(user=user).order_by('-date').first()
+
+        if latest_test and latest_lifestyle:
+            lifestyle_data = {
+                'physical_activity': latest_lifestyle.physical_activity,
+                'healthy_diet': latest_lifestyle.healthy_diet,
+                'social_engagement': latest_lifestyle.social_engagement,
+                'good_sleep': latest_lifestyle.good_sleep,
+                'smoking': latest_lifestyle.smoking,
+                'alcohol': latest_lifestyle.alcohol,
+                'stress': latest_lifestyle.stress
+            }
+            
+            brain_health_score = calculate_brain_health_score(latest_test.score, lifestyle_data)
+            
+            assessment, created = BrainHealthAssessment.objects.update_or_create(
+                patient=patient,
+                defaults={
+                    'score': brain_health_score,
+                    'cognitive_score': latest_test.score,
+                    'lifestyle_data': latest_lifestyle,
+                    'date': datetime.now().date()
+                }
+            )
+            
+            # Generate new recommendations
+            Recommendation.objects.filter(patient=patient, completed=False).delete()
+            recommendations = generate_recommendations(brain_health_score, lifestyle_data)
+            
+            for rec in recommendations:
+                Recommendation.objects.create(
+                    patient=patient,
+                    category=rec['category'],
+                    title=rec['title'],
+                    description=rec['description'],
+                    priority=rec['priority']
+                )
+            
+            return assessment
+    except Exception as e:
+        logger.error(f"Error updating brain health assessment: {str(e)}")
+        return None
+
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def lifestyle_stats(request):
-    """Get lifestyle statistics and trends"""
+    """
+    Get aggregated lifestyle statistics for the authenticated user
+    - Returns averages and totals for different time periods
+    """
     try:
-        # Get data for the last 30 days
-        thirty_days_ago = datetime.now() - timedelta(days=30)
-        entries = LifestyleData.objects.filter(
-            user=request.user,
-            date__gte=thirty_days_ago
-        ).order_by('date')
+        # Get time period filter (default: 30 days)
+        time_period = request.GET.get('period', '30d')
         
-        if not entries.exists():
-            return Response({'message': 'No lifestyle data available'})
-        
-        serializer = LifestyleDataSerializer(entries, many=True)
-        
+        if time_period == '7d':
+            date_filter = datetime.now() - timedelta(days=7)
+        elif time_period == '30d':
+            date_filter = datetime.now() - timedelta(days=30)
+        elif time_period == '90d':
+            date_filter = datetime.now() - timedelta(days=90)
+        else:  # All time
+            date_filter = None
+
+        # Base queryset
+        queryset = LifestyleData.objects.filter(user=request.user)
+        if date_filter:
+            queryset = queryset.filter(date__gte=date_filter)
+
+        if not queryset.exists():
+            return Response({'message': 'No lifestyle data available for the selected period'})
+
         # Calculate averages
-        averages = {
-            'physical_activity': entries.aggregate(Avg('physical_activity'))['physical_activity__avg'],
-            'healthy_diet': entries.aggregate(Avg('healthy_diet'))['healthy_diet__avg'],
-            'social_engagement': entries.aggregate(Avg('social_engagement'))['social_engagement__avg'],
-            'good_sleep': entries.aggregate(Avg('good_sleep'))['good_sleep__avg'],
-            'stress': entries.aggregate(Avg('stress'))['stress__avg']
-        }
-        
+        averages = queryset.aggregate(
+            avg_physical_activity=Avg('physical_activity'),
+            avg_healthy_diet=Avg('healthy_diet'),
+            avg_social_engagement=Avg('social_engagement'),
+            avg_good_sleep=Avg('good_sleep'),
+            avg_stress=Avg('stress'),
+            avg_smoking=Avg('smoking'),
+            avg_alcohol=Avg('alcohol')
+        )
+
+        # Calculate totals where applicable
+        totals = queryset.aggregate(
+            total_physical_activity=Sum('physical_activity'),
+            total_healthy_meals=Sum('healthy_diet')
+        )
+
+        # Get latest entry
+        latest_entry = LifestyleDataSerializer(
+            queryset.order_by('-date').first()
+        ).data
+
         return Response({
-            'entries': serializer.data,
-            'averages': averages
+            'period': time_period,
+            'averages': averages,
+            'totals': totals,
+            'latest_entry': latest_entry,
+            'entry_count': queryset.count()
         })
-    
+
     except Exception as e:
+        logger.error(f"Error in lifestyle_stats: {str(e)}")
         return Response(
-            {'error': str(e)}, 
+            {'error': 'An error occurred while processing your request'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def lifestyle_trends(request):
+    """
+    Get lifestyle data trends over time for charting
+    - Returns data grouped by week/month
+    """
+    try:
+        # Get grouping parameter (default: week)
+        group_by = request.GET.get('group_by', 'week')
+        
+        queryset = LifestyleData.objects.filter(user=request.user)
+        
+        if not queryset.exists():
+            return Response({'message': 'No lifestyle data available'})
+
+        # Annotate with time period
+        if group_by == 'month':
+            queryset = queryset.extra(
+                select={'period': "DATE_FORMAT(date, '%%Y-%%m')"}
+            ).values('period').annotate(
+                physical_activity=Avg('physical_activity'),
+                healthy_diet=Avg('healthy_diet'),
+                social_engagement=Avg('social_engagement'),
+                good_sleep=Avg('good_sleep'),
+                stress=Avg('stress')
+            ).order_by('period')
+        else:  # week
+            queryset = queryset.extra(
+                select={'period': "CONCAT(YEAR(date), '-', WEEK(date))"}
+            ).values('period').annotate(
+                physical_activity=Avg('physical_activity'),
+                healthy_diet=Avg('healthy_diet'),
+                social_engagement=Avg('social_engagement'),
+                good_sleep=Avg('good_sleep'),
+                stress=Avg('stress')
+            ).order_by('period')
+
+        return Response(list(queryset))
+
+    except Exception as e:
+        logger.error(f"Error in lifestyle_trends: {str(e)}")
+        return Response(
+            {'error': 'An error occurred while processing your request'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 

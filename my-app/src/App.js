@@ -1,6 +1,6 @@
 import React from 'react';
 import './App.css';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import Navbar from './pages/Navbar';
 import Dashboard from './pages/Dashboard';
@@ -13,8 +13,12 @@ import SignUp from './pages/Signup';
 import Services from './pages/Services';
 import Login from './pages/Login';
 import { AuthProvider } from './pages/context/AuthContext';
+import { useState } from 'react';
 
 function App() {
+  const isAuthenticated = localStorage.getItem('authToken');
+  const [authData, setAuthData] = useState(null);
+
   return (
     <AuthProvider>
       <Router>
@@ -26,13 +30,31 @@ function App() {
             <Route path="/services" element={<Services />} />
             <Route path="/login" element={<Login />} />
 
-            {/* Dashboard Route with Nested Routes */}
-            <Route path="/dashboard/*" element={<Dashboard />}>
-              <Route path="cognitive-test" element={<CognitiveTest />} />
-              <Route path="lifestyle-tracker" element={<LifestyleTracker />} />
-              <Route path="lifestyle-history" element={<LifestyleHistory />} />
-              <Route path="caregiver-view" element={<CaregiverDashboard />} />
-              <Route path="healthcare-professionals" element={<HealthcareProfessionals />} />
+            {/* Protected Routes */}
+            <Route
+              path="/dashboard"
+              element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />}
+            >
+              <Route
+                path="cognitive-test"
+                element={isAuthenticated ? <CognitiveTest /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="lifestyle-tracker"
+                element={isAuthenticated ? <LifestyleTracker /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="lifestyle-history"
+                element={isAuthenticated ? <LifestyleHistory /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="healthcare-professionals"
+                element={isAuthenticated ? <HealthcareProfessionals /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="caregiver-view"
+                element={isAuthenticated && authData?.isCaregiver ? <CaregiverDashboard /> : <Navigate to="/login" />}
+              />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -44,3 +66,5 @@ function App() {
 }
 
 export default App;
+
+

@@ -1,229 +1,377 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { useAuth } from './context/AuthContext';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar
+} from 'recharts';
+import { format, subDays } from 'date-fns';
 import axios from 'axios';
 import './LifestyleTracker.css';
+import {
+  Box, Typography, Paper, Grid, Card, CardContent,
+  TextField, Button, MenuItem, Snackbar, Alert,
+  CircularProgress, Tabs, Tab, Divider, List, ListItem, ListItemText
+} from '@mui/material';
 
-function LifestyleTracker() {
+const LifestyleTracker = () => {
+  const { user } = useAuth();
+  const [lifestyleData, setLifestyleData] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [activeTab, setActiveTab] = useState(0);
+  const [recommendations, setRecommendations] = useState([]);
+  const [assessment, setAssessment] = useState(null);
+
+  // Form state
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    sleep: '',
-    water: '',
-    steps: '',
-    exercise: '',
-    mood: '5',
-    nutrition: ''
+    date: format(new Date(), 'yyyy-MM-dd'),
+    physical_activity: 5,
+    healthy_diet: 5,
+    social_engagement: 5,
+    good_sleep: 5,
+    smoking: 0,
+    alcohol: 0,
+    stress: 3,
+    notes: ''
   });
-  const [trackerData, setTrackerData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch existing data
+  const metrics = [
+    { key: 'physical_activity', label: 'Physical Activity', ideal: 'Higher' },
+    { key: 'healthy_diet', label: 'Healthy Diet', ideal: 'Higher' },
+    { key: 'social_engagement', label: 'Social Engagement', ideal: 'Higher' },
+    { key: 'good_sleep', label: 'Quality Sleep', ideal: 'Higher' },
+    { key: 'stress', label: 'Stress Level', ideal: 'Lower' },
+    { key: 'smoking', label: 'Smoking', ideal: 'Lower' },
+    { key: 'alcohol', label: 'Alcohol', ideal: 'Lower' }
+  ];
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get('http://localhost:8000/api/lifestyle-data/');
-        setTrackerData(response.data);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
+    fetchLifestyleData();
+    fetchStats();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const fetchLifestyleData = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('http://localhost:8000/api/lifestyle-data/');
+      setLifestyleData(response.data);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to fetch lifestyle data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await axios.get('http://localhost:8000/api/lifestyle-stats/');
+      setStats(response.data);
+    } catch (err) {
+      console.error('Failed to fetch stats:', err);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      setLoading(true);
       const response = await axios.post(
-        'http://localhost:8000/api/lifestyle-data/',
-        formData,
-        {
-          headers: {
-            'Authorization': `Token ${localStorage.getItem('token')}`, // If using token auth
-            'Content-Type': 'application/json'
-          }
-        }
+        '/api/lifestyle/lifestyle_data/',
+        formData
       );
-      
-      // Update the tracker data with the response
-      setTrackerData(response.data);
-      
-      // Reset form
+
+      setSuccess('Lifestyle data submitted successfully!');
       setFormData({
-        date: new Date().toISOString().split('T')[0],
-        sleep: '',
-        water: '',
-        steps: '',
-        exercise: '',
-        mood: '5',
-        nutrition: ''
+        date: format(new Date(), 'yyyy-MM-dd'),
+        physical_activity: 5,
+        healthy_diet: 5,
+        social_engagement: 5,
+        good_sleep: 5,
+        smoking: 0,
+        alcohol: 0,
+        stress: 3,
+        notes: ''
       });
-      
-    } catch (error) {
-      console.error("Error saving data:", error);
-      alert("Failed to save entry. Please try again.");
+
+      if (response.data.brain_health_assessment) {
+        setAssessment(response.data.brain_health_assessment);
+      }
+      if (response.data.recommendations) {
+        setRecommendations(response.data.recommendations);
+      }
+
+      fetchLifestyleData();
+      fetchStats();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to submit lifestyle data');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Prepare chart data
-  const chartData = trackerData.map(item => ({
-    date: item.date,
-    sleep: parseInt(item.sleep),
-    water: parseInt(item.water),
-    steps: parseInt(item.steps)/1000, // Convert to thousands
-    mood: parseInt(item.mood)
-  }));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'notes' ? value : Number(value)
+    }));
+  };
 
-  return (
-    <div className="lifestyle-tracker">
-      <h2>Lifestyle Tracker</h2>
-      
-      <div className="tracker-container">
-        <form onSubmit={handleSubmit} className="tracker-form">
-          <h3>Daily Input</h3>
-          
-          <div className="form-group">
-            <label>Date:</label>
-            <input 
-              type="date" 
-              name="date" 
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
+  const handleCloseSnackbar = () => {
+    setError(null);
+    setSuccess(null);
+  };
+
+  const renderForm = () => (
+    <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
+      <Typography variant="h6" gutterBottom>
+        Record Your Daily Lifestyle
+      </Typography>
+      <form onSubmit={handleSubmit}>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              type="date"
+              label="Date"
+              name="date"
               value={formData.date}
               onChange={handleChange}
-              required
+              InputLabelProps={{ shrink: true }}
             />
-          </div>
+          </Grid>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>Sleep (hours):</label>
-              <input
-                type="number"
-                name="sleep"
-                min="0"
-                max="24"
-                value={formData.sleep}
+          {metrics.map(metric => (
+            <Grid item xs={12} sm={6} md={4} key={metric.key}>
+              <TextField
+                select
+                fullWidth
+                label={metric.label}
+                name={metric.key}
+                value={formData[metric.key]}
                 onChange={handleChange}
-                required
-              />
-            </div>
+              >
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                  <MenuItem key={num} value={num}>
+                    {num} {metric.ideal === 'Higher' ? (num >= 7 ? '👍' : num <= 3 ? '👎' : '') : 
+                          (num <= 3 ? '👍' : num >= 7 ? '👎' : '')}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+          ))}
 
-            <div className="form-group">
-              <label>Water (glasses):</label>
-              <input
-                type="number"
-                name="water"
-                min="0"
-                value={formData.water}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label>Steps:</label>
-              <input
-                type="number"
-                name="steps"
-                min="0"
-                value={formData.steps}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Exercise (minutes):</label>
-              <input
-                type="number"
-                name="exercise"
-                min="0"
-                value={formData.exercise}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>Mood (1-10):</label>
-            <input
-              type="range"
-              name="mood"
-              min="1"
-              max="10"
-              value={formData.mood}
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              multiline
+              rows={3}
+              label="Additional Notes"
+              name="notes"
+              value={formData.notes}
               onChange={handleChange}
             />
-            <span className="mood-value">{formData.mood}</span>
-          </div>
+          </Grid>
 
-          <div className="form-group">
-            <label>Nutrition Notes:</label>
-            <textarea
-              name="nutrition"
-              value={formData.nutrition}
-              onChange={handleChange}
-              placeholder="What did you eat today?"
-            />
-          </div>
-
-          <button type="submit" className="submit-btn">Save Entry</button>
-        </form>
-
-        <div className="tracker-visualization">
-          <h3>Progress Overview</h3>
-          
-          {isLoading ? (
-            <p>Loading data...</p>
-          ) : trackerData.length > 0 ? (
-            <>
-              <div className="chart-container">
-                <LineChart width={500} height={300} data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="sleep" stroke="#8884d8" />
-                  <Line type="monotone" dataKey="water" stroke="#82ca9d" />
-                  <Line type="monotone" dataKey="steps" stroke="#ffc658" />
-                  <Line type="monotone" dataKey="mood" stroke="#ff8042" />
-                </LineChart>
-              </div>
-
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <h4>Avg. Sleep</h4>
-                  <p>{Math.round(trackerData.reduce((sum, item) => sum + parseInt(item.sleep), 0) / trackerData.length)} hrs</p>
-                </div>
-                <div className="stat-card">
-                  <h4>Avg. Water</h4>
-                  <p>{Math.round(trackerData.reduce((sum, item) => sum + parseInt(item.water), 0) / trackerData.length)} glasses</p>
-                </div>
-                <div className="stat-card">
-                  <h4>Avg. Steps</h4>
-                  <p>{Math.round(trackerData.reduce((sum, item) => sum + parseInt(item.steps), 0) / trackerData.length).toLocaleString()}</p>
-                </div>
-                <div className="stat-card">
-                  <h4>Avg. Mood</h4>
-                  <p>{Math.round(trackerData.reduce((sum, item) => sum + parseInt(item.mood), 0) / trackerData.length)}/10</p>
-                </div>
-              </div>
-            </>
-          ) : (
-            <p>No data available. Add your first entry!</p>
-          )}
-        </div>
-      </div>
-    </div>
+          <Grid item xs={12}>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={loading}
+              startIcon={loading ? <CircularProgress size={20} /> : null}
+            >
+              Submit
+            </Button>
+          </Grid>
+        </Grid>
+      </form>
+    </Paper>
   );
-}
+
+  const renderTrends = () => {
+    if (!stats || !stats.entries.length) return (
+      <Typography variant="body1" color="textSecondary">
+        No lifestyle data available for trends analysis.
+      </Typography>
+    );
+
+    const chartData = stats.entries.map(entry => ({
+      date: format(new Date(entry.date), 'MMM dd'),
+      ...entry
+    }));
+
+    return (
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <Typography variant="h6" gutterBottom>
+            30-Day Trends
+          </Typography>
+          <ResponsiveContainer width="100%" height={400}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis domain={[0, 10]} />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="physical_activity" stroke="#8884d8" activeDot={{ r: 8 }} />
+              <Line type="monotone" dataKey="healthy_diet" stroke="#82ca9d" />
+              <Line type="monotone" dataKey="social_engagement" stroke="#ffc658" />
+              <Line type="monotone" dataKey="good_sleep" stroke="#ff8042" />
+              <Line type="monotone" dataKey="stress" stroke="#ff0000" strokeDasharray="5 5" />
+            </LineChart>
+          </ResponsiveContainer>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Typography variant="h6" gutterBottom>
+            Averages (Last 30 Days)
+          </Typography>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={Object.entries(stats.averages).map(([key, value]) => ({
+              name: key.replace('_', ' '),
+              value: value.toFixed(1)
+            }))}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis domain={[0, 10]} />
+              <Tooltip />
+              <Bar dataKey="value" fill="#8884d8" />
+            </BarChart>
+          </ResponsiveContainer>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Typography variant="h6" gutterBottom>
+            Key Metrics
+          </Typography>
+          <Grid container spacing={2}>
+            {Object.entries(stats.averages).map(([key, value]) => (
+              <Grid item xs={6} sm={4} key={key}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="subtitle2" color="textSecondary">
+                      {key.replace('_', ' ')}
+                    </Typography>
+                    <Typography variant="h5">
+                      {value.toFixed(1)}
+                      <Typography component="span" variant="body2" color="textSecondary">
+                        /10
+                      </Typography>
+                    </Typography>
+                    <Typography variant="caption" color={value >= 7 ? 'success.main' : value <= 4 ? 'error.main' : 'warning.main'}>
+                      {value >= 7 ? 'Excellent' : value <= 4 ? 'Needs Improvement' : 'Good'}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Grid>
+      </Grid>
+    );
+  };
+
+  const renderRecommendations = () => {
+    if (!recommendations.length && !assessment) return (
+      <Typography variant="body1" color="textSecondary">
+        Submit your first lifestyle assessment to get personalized recommendations.
+      </Typography>
+    );
+
+    return (
+      <Grid container spacing={3}>
+        {assessment && (
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Brain Health Assessment
+                </Typography>
+                <Typography variant="h3" color="primary" gutterBottom>
+                  {assessment.score}/100
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  Cognitive Score: {assessment.cognitive_score}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Last updated: {format(new Date(assessment.date), 'MMMM d, yyyy')}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        <Grid item xs={12} md={6}>
+          <Typography variant="h6" gutterBottom>
+            Your Recommendations
+          </Typography>
+          {recommendations.length > 0 ? (
+            <List>
+              {recommendations.map((rec, index) => (
+                <ListItem key={index} alignItems="flex-start">
+                  <ListItemText
+                    primary={`${rec.priority === 'high' ? '⚠️ ' : ''}${rec.title}`}
+                    secondary={rec.description}
+                    primaryTypographyProps={{
+                      color: rec.priority === 'high' ? 'error.main' : 'text.primary',
+                      fontWeight: rec.priority === 'high' ? 'bold' : 'normal'
+                    }}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          ) : (
+            <Typography variant="body1" color="textSecondary">
+              No specific recommendations at this time.
+            </Typography>
+          )}
+        </Grid>
+      </Grid>
+    );
+  };
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        Lifestyle Tracker
+      </Typography>
+      <Typography variant="body1" paragraph>
+        Track your daily habits and see how they impact your brain health over time.
+      </Typography>
+
+      <Tabs value={activeTab} onChange={handleTabChange} sx={{ mb: 3 }}>
+        <Tab label="New Entry" />
+        <Tab label="Trends & Stats" />
+        <Tab label="Recommendations" />
+      </Tabs>
+
+      <Divider sx={{ mb: 3 }} />
+
+      {activeTab === 0 && renderForm()}
+      {activeTab === 1 && renderTrends()}
+      {activeTab === 2 && renderRecommendations()}
+
+      <Snackbar open={!!error} autoHideDuration={6000} onClose={handleCloseSnackbar}>
+        <Alert onClose={handleCloseSnackbar} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar open={!!success} autoHideDuration={6000} onClose={handleCloseSnackbar}>
+        <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: '100%' }}>
+          {success}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
+};
+
 
 export default LifestyleTracker;

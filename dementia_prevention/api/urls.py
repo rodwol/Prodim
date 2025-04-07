@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import check_auth
 from rest_framework.authtoken.views import obtain_auth_token
+from django.contrib.auth import views as auth_views
 from .views import (
     signup,
     login_view,
@@ -14,6 +15,7 @@ from .views import (
     brain_health_history,
     recommendations,
     send_verification,
+    lifestyle_trends,
     verify_patient,
     caregiver_patients,
     add_patient,
@@ -23,19 +25,23 @@ from .views import (
 urlpatterns = [
     # Authentication
     path('signup/', signup, name='signup'),
-    path('login_view/', login_view, name='login'),
+    path('login_view/', login_view, name='login_view'),
+    path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
+    path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
+
     # Dashboard
     path('dashboard/', user_dashboard, name='user_dashboard'),
     path('caregiver-dashboard/', caregiver_dashboard, name='caregiver_dashboard'),
     
     # Cognitive Tests
     path('cognitive-tests-questions/', cognitive_test_questions, name='cognitive_test_questions'),
-    path('cognitive-tests/submit/', submit_cognitive_test, name='submit_cognitive_test'),
+    path('submit_cognitive_test', submit_cognitive_test, name='submit_cognitive_test'),
     path('cognitive-tests/history/', cognitive_test_history, name='cognitive_test_history'),
     
     # Lifestyle Tracking
     path('lifestyle-data/', lifestyle_data, name='lifestyle_data'),
     path('lifestyle-stats/', lifestyle_stats, name='lifestyle_stats'),
+    path('lifestyle-trends/', lifestyle_trends, name='lifestyle-trends'),
     
     # Brain Health
     path('brain-health/', brain_health_history, name='brain_health_history'),

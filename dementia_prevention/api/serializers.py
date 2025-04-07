@@ -43,6 +43,8 @@ class LifestyleDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = LifestyleData
         fields = '__all__'
+        read_only_fields = ['user', 'created_at']
+
 
 class BrainHealthAssessmentSerializer(serializers.ModelSerializer):
     class Meta:

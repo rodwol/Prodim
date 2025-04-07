@@ -12,18 +12,18 @@ function CognitiveTest() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [matchResult, setMatchResult] = useState({ valid: false, feedback: '' });
+  const [submissionError, setSubmissionError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Speech recognition
   const { transcript, listening, resetTranscript } = useSpeechRecognition();
   const currentQuestion = questions[currentQuestionIndex] || {};
 
-  // Fetch questions - Ensure this runs only once
+  // Fetch questions
   useEffect(() => {
-    console.log('Fetching questions...');
     const fetchQuestions = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/cognitive-tests-questions/');
-        console.log('Questions fetched:', response.data);
+        const response = await axios.post('http://localhost:8000/api/cognitive-tests-questions/');
         setQuestions(response.data.questions);
       } catch (err) {
         setError(err.message);
@@ -32,7 +32,7 @@ function CognitiveTest() {
       }
     };
     fetchQuestions();
-  }, []); // Empty dependency array ensures effect runs only once when component mounts
+  }, []);
 
   // Handle speech recognition based on question type
   useEffect(() => {
@@ -40,12 +40,10 @@ function CognitiveTest() {
 
     if (currentQuestion.type === 'reading' || currentQuestion.type === 'verbal_recall') {
       resetTranscript();
-      console.log('Starting Speech Recognition...');
       SpeechRecognition.startListening({ continuous: true });
     }
 
     return () => {
-      console.log('Stopping Speech Recognition...');
       SpeechRecognition.stopListening();
     };
   }, [currentQuestionIndex, currentQuestion.type, resetTranscript]);
@@ -55,10 +53,13 @@ function CognitiveTest() {
     if (transcript && currentQuestion.type) {
       const result = verifyResponse(transcript);
       setMatchResult(result);
+      if (result.valid) {
+        handleAnswerChange(transcript);
+      }
     }
   }, [transcript, currentQuestion]);
 
-  // Memoize the verifyResponse function to avoid unnecessary recalculations
+  // Memoize the verifyResponse function
   const verifyResponse = useMemo(() => {
     return (spokenText) => {
       switch (currentQuestion.type) {
@@ -77,12 +78,10 @@ function CognitiveTest() {
     const spoken = normalize(spokenText);
     const expected = normalize(currentQuestion.expected_response);
 
-    // Check for perfect match
     if (spoken.includes(expected)) {
       return { valid: true, feedback: '✅ Perfect recall!' };
     }
 
-    // Check partial matches
     if (currentQuestion.partial_credit) {
       const bestMatch = currentQuestion.partial_credit.find((partial) =>
         spoken.includes(normalize(partial))
@@ -126,23 +125,60 @@ function CognitiveTest() {
   };
 
   const handleAnswerChange = (answer) => {
-    setAnswers((prev) => ({ ...prev, [currentQuestion.id]: answer }));
+    setAnswers((prev) => ({ 
+      ...prev, 
+      [currentQuestion.id]: {
+        question_id: currentQuestion.id,
+        answer: answer,
+        type: currentQuestion.type
+      } 
+    }));
   };
 
   const handleSubmit = async () => {
+    setSubmissionError(null);
+    setIsSubmitting(true);
+    
     try {
-      const response = await axios.get('http://localhost:8000/api/cognitive-tests-questions/', {
-        answers: Object.entries(answers).map(([id, answer]) => ({ question_id: id, answer })),
-      });
-      setScore(response.data.score);
+      // Format answers for submission
+      const formattedAnswers = Object.values(answers).map(answer => ({
+        question_id: answer.question_id,
+        answer: answer.answer,
+        type: answer.type
+      }));
+
+      console.log('Submitting answers:', formattedAnswers);
+
+      const response = await axios.post(
+        'http://localhost:8000/api/submit_cognitive_test',
+        { answers: formattedAnswers },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('Submission response:', response.data);
+
+      if (response.data.error) {
+        setSubmissionError(response.data.error);
+      } else {
+        setScore(response.data.score);
+      }
     } catch (err) {
-      console.error('Evaluation error:', err);
+      console.error('Submission error:', err);
+      setSubmissionError(err.response?.data?.error || 'Failed to submit test. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // Helper variables
   const requiresVerbalResponse = ['reading', 'verbal_recall'].includes(currentQuestion.type);
-  const canProceed = requiresVerbalResponse ? matchResult.valid : answers[currentQuestion.id];
+  const canProceed = requiresVerbalResponse ? 
+    (matchResult.valid && answers[currentQuestion.id]) : 
+    answers[currentQuestion.id];
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
 
   if (!SpeechRecognition.browserSupportsSpeechRecognition()) {
@@ -166,7 +202,7 @@ function CognitiveTest() {
               <input
                 type="radio"
                 name={`q_${currentQuestion.id}`}
-                checked={answers[currentQuestion.id] === option}
+                checked={answers[currentQuestion.id]?.answer === option}
                 onChange={() => handleAnswerChange(option)}
               />
               {option}
@@ -204,15 +240,40 @@ function CognitiveTest() {
             Next →
           </button>
         ) : (
-          <button onClick={handleSubmit} disabled={!canProceed}>
-            Submit Test
+          <button 
+            onClick={handleSubmit} 
+            disabled={!canProceed || isSubmitting}
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit Test'}
           </button>
         )}
       </div>
 
+      {submissionError && (
+        <div className="error-message">
+          <p>Error: {submissionError}</p>
+          <p>Submitted answers: {JSON.stringify(answers, null, 2)}</p>
+        </div>
+      )}
+
       {score !== null && (
-        <div className="results">
+        <div className="results" data-score={
+          score >= questions.length * 0.9 ? "excellent" :
+          score >= questions.length * 0.7 ? "good" :
+          score >= questions.length * 0.5 ? "average" : "poor"
+        }>
           <h3>Your Score: {score}/{questions.length}</h3>
+          <p>
+            {score >= questions.length * 0.9 ? "Excellent! Your cognitive abilities are outstanding." :
+             score >= questions.length * 0.7 ? "Good job! Your cognitive abilities are above average." :
+             score >= questions.length * 0.5 ? "Average performance. There's room for improvement." :
+             "Below average. Consider practicing or consulting with a specialist."}
+          </p>
+          {score < questions.length * 0.7 && (
+            <p className="suggestion">
+              Tip: Regular mental exercises and a healthy lifestyle can help improve cognitive function.
+            </p>
+          )}
         </div>
       )}
     </div>
