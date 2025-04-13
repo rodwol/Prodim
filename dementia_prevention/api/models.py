@@ -26,6 +26,10 @@ class Caregiver(models.Model):
     def __str__(self):
         return f"{self.user.username} (Caregiver)"
 
+class LifestyleDataManager(models.Manager):
+    def for_date(self, date_filter):
+        return self.get_queryset().filter(date__gte=date_filter)
+
 class LifestyleData(models.Model):
     user = models.ForeignKey(
         User, 
@@ -33,7 +37,7 @@ class LifestyleData(models.Model):
         related_name='lifestyle_entries'
     )
     created_at = models.DateTimeField(default=timezone.now)
-    date = models.DateField(default=timezone.now)  # 🆕 Added date field
+    date = models.DateField(default=timezone.now)
     physical_activity = models.IntegerField(default=0)
     healthy_diet = models.IntegerField(default=0)
     social_engagement = models.IntegerField(default=0)
@@ -42,6 +46,8 @@ class LifestyleData(models.Model):
     alcohol = models.IntegerField(default=0)
     stress = models.IntegerField(default=1)
     notes = models.TextField(null=True, blank=True)
+
+    objects = LifestyleDataManager()  # Use the custom manager
 
     def __str__(self):
         return f"Lifestyle data for {self.user.username} on {self.date}"

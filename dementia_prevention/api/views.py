@@ -2,8 +2,9 @@ from django.http import JsonResponse
 import logging
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from rest_framework import status
@@ -261,7 +262,7 @@ def check_auth(request):
     return Response({'authenticated': False})
 
 @api_view(['POST', 'GET'])
-@login_required
+@permission_classes([IsAuthenticated])
 def user_dashboard(request):
     """Main dashboard for both patients and caregivers"""
     try:
@@ -685,11 +686,13 @@ QUESTIONS = [
 ]
 
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def cognitive_test_questions(request):
     return JsonResponse({'questions': QUESTIONS})
 
 
 @api_view(['POST', 'GET'])
+@permission_classes([IsAuthenticated])
 def submit_cognitive_test(request):
     try:
         data = request.data
@@ -816,6 +819,7 @@ def cognitive_test_history(request):
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
+@authentication_classes([SessionAuthentication])
 def lifestyle_data(request):
     """
     Handle lifestyle data submission and retrieval
