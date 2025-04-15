@@ -14,6 +14,12 @@ function Dashboard() {
     return location.pathname === `/dashboard/${path}` || 
            location.pathname.startsWith(`/dashboard/${path}/`);
   };
+  useEffect(() => {
+    if (!authData) {
+      navigate('/login');
+    }
+  }, [authData, navigate]);
+  
   // Fetch user dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {

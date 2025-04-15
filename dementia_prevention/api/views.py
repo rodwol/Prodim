@@ -1,5 +1,6 @@
 from django.http import JsonResponse
 import logging
+from django.contrib.auth import get_user_model
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
@@ -154,67 +155,68 @@ def generate_recommendations(brain_health_score, lifestyle_data):
         })
     
     return recommendations
-@api_view(['POST'])
-def signup(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            username = data.get('username')
-            email = data.get('email')
-            password = data.get('password')
-            user_type = data.get('user_type', 'patient')  # 'patient' or 'caregiver'
 
-            if not all([username, email, password]):
-                return JsonResponse(
-                    {'error': 'All fields are required'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+from rest_framework.permissions import AllowAny
+@api_view(['POST', 'GET'])
+@permission_classes([AllowAny])
+def signup_view(request):
 
-            if User.objects.filter(username=username).exists():
-                return JsonResponse(
-                    {'error': 'Username already exists'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            if User.objects.filter(email=email).exists():
-                return JsonResponse(
-                    {'error': 'Email already exists'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+    data = request.data
+    username = data.get('username')
+    password = data.get('password')
+    email = data.get('email')
 
-            user = User.objects.create_user(
-                username=username,
-                email=email,
-                password=password
-            )
-            
-            # Create patient or caregiver profile based on user type
-            if user_type == 'caregiver':
-                Caregiver.objects.create(user=user)
-            else:
-                Patient.objects.create(user=user)
-            
-            return JsonResponse(
-                {'message': 'Sign up successful'}, 
-                status=status.HTTP_201_CREATED
-            )
+    # Validate required fields
+    missing_fields = []
+    if not username:
+        missing_fields.append('username')
+    if not password:
+        missing_fields.append('password')
+    if not email:
+        missing_fields.append('email')
 
-        except json.JSONDecodeError:
-            return JsonResponse(
-                {'error': 'Invalid JSON'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        except Exception as e:
-            return JsonResponse(
-                {'error': str(e)}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+    if missing_fields:
+        return Response(
+            {'detail': f"Missing required field(s): {', '.join(missing_fields)}"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
-    return JsonResponse(
-        {'error': 'Invalid request method'}, 
-        status=status.HTTP_405_METHOD_NOT_ALLOWED
-    )
+    # Check if username or email already exists
+    if User.objects.filter(username=username).exists():
+        return Response(
+            {'detail': 'Username already exists'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
+    if User.objects.filter(email=email).exists():
+        return Response(
+            {'detail': 'Email already exists'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Create the user
+    try:
+        user = User.objects.create_user(
+            username=username,
+            password=password,
+            email=email
+        )
+        
+        # Log the user in (optional)
+        login(request, user)
+        
+        return Response({
+            'user_id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'message': 'Signup successful'
+        }, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        return Response(
+            {'detail': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @api_view(['POST', 'GET'])
 def login_view(request):

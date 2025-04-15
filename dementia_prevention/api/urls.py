@@ -3,7 +3,7 @@ from .views import check_auth
 from rest_framework.authtoken.views import obtain_auth_token
 from django.contrib.auth import views as auth_views
 from .views import (
-    signup,
+    signup_view,
     login_view,
     user_dashboard,
     caregiver_dashboard,
@@ -24,7 +24,7 @@ from .views import (
 
 urlpatterns = [
     # Authentication
-    path('signup/', signup, name='signup'),
+    path('signup_view/', signup_view, name='signup_view'),
     path('login_view/', login_view, name='login_view'),
     path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
     path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),

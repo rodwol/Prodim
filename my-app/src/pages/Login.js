@@ -19,16 +19,16 @@ const Login = () => {
           'X-CSRFToken': csrfToken,
         },
         body: JSON.stringify({ username, password }),
-        credentials: 'include', // Needed for cookies/sessions
+        credentials: 'include',
       });
 
       const data = await response.json();
-    
+
       if (response.ok && data.user_id) {
-        localStorage.setItem('authToken', 'true');  // ✅ Check BOTH status + data
+        localStorage.setItem('authToken', 'true');
         navigate('/dashboard');
       } else {
-        setError(data.detail || 'Login failed');  // Show error
+        setError(data.detail || 'Login failed');
       }
     } catch (err) {
       setError('Network error');
@@ -56,6 +56,12 @@ const Login = () => {
         />
         <button type="submit">Login</button>
       </form>
+
+      {/* Redirect to signup page */}
+      <div style={{ marginTop: '20px' }}>
+        <p>Don't have an account?</p>
+        <button onClick={() => navigate('/signup')}>Sign Up</button>
+      </div>
     </div>
   );
 };

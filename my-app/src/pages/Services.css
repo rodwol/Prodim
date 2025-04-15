@@ -1,69 +1,113 @@
 /* General styles for the services page */
 .services-page {
-    font-family: Arial, sans-serif;
-    text-align: center;
-    padding: 20px;
-    display: flex;
-    justify-content: space-between;
-    gap: 20px;
-    text-align: left;
-    font-family: Arial, sans-serif;
-    background-image: url('./assets/bavi.mp4'); /* Path to your image */
-    background-size: cover; /* Ensure the image covers the entire component */
-    background-position: center; /* Center the image */
-    background-repeat: no-repeat;
-    min-height: 100vh; /* Ensure the component takes up at least the full viewport height */
-    padding: 20px;
+  font-family: Arial, sans-serif;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: stretch;
+  gap: 20px;
+  padding: 20px;
+  min-height: 100vh;
+  background-color: #f0f2f5; /* Fallback background */
+  position: relative;
+  overflow: hidden;
+}
 
+/* Video background overlay */
+.services-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); /* Dark overlay for better text visibility */
+  z-index: 1;
+}
+
+/* Common styles for each service section */
+.service-section {
+  flex: 1;
+  padding: 20px;
+  min-height: 60vh;
+  color: white;
+  background-size: cover;
+  background-position: center;
+  border-radius: 15px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  z-index: 2;
+}
+
+/* Add overlay to service sections for better text visibility */
+.service-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1;
+}
+
+.service-section:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Cognitive Assessments Section */
+.cognitive-assessments {
+  background-image: url('./assets/cognitive-bg.jpg');
+}
+
+/* Health Dashboard Section */
+.health-dashboard {
+  background-image: url('./assets/health-bg.png');
+}
+
+/* Community Support Section */
+.community-support {
+  background-image: url('./assets/community-bg.jpeg');
+}
+
+/* Heading styles */
+.service-section h2 {
+  font-size: 2rem;
+  margin-bottom: 15px;
+  position: relative;
+  z-index: 3;
+  color: white;
+  text-align: center;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* Paragraph styles */
+.service-section p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #e0e0e0;
+  margin-bottom: 30px;
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  padding: 0 20px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .services-page {
+      flex-direction: column;
+      min-height: auto;
   }
-  /* Common styles for each service section */
+  
   .service-section {
-    flex:1;
-    padding: 100px 20px; /* Add padding to make sections taller */
-    margin: 20px 0; /* Add margin between sections */
-    color: white; /* Text color */
-    background-size: cover; /* Ensure the background image covers the section */
-    background-position: center; /* Center the background image */
-    border-radius: 10px; /* Rounded corners for sections */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+      min-height: 300px;
+      margin-bottom: 20px;
   }
-  
-  /* Cognitive Assessments Section */
-  .cognitive-assessments {
-    background-image: url('./assets/cognitive-bg.jpg'); /* Path to your background image */
-  }
-  
-  /* Health Dashboard Section */
-  .health-dashboard {
-    background-image: url('./assets/health-bg.png'); /* Path to your background image */
-  }
-  
-  /* Community Support Section */
-  .community-support {
-    background-image: url('./assets/community-bg.jpeg'); /* Path to your background image */
-  }
-  
-  /* Heading styles */
-  .service-section h2 {
-    font-size: 32px;
-    margin-bottom: 50px;
-    position: absolute;
-    bottom: 280px;
-    padding: 10px;
-    color: rgb(0, 0, 0);
-    width: 100%;
-    text-align: center;
-
-  }
-  
-  /* Paragraph styles */
-  .service-section p {
-    font-size: 18px;
-    max-width: 600px;
-    color: rgb(98, 243, 163);
-    margin: 0 auto; /* Center the text */
-    top: 400px;
-  }
+}

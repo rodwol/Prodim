@@ -47,15 +47,29 @@ const LifestyleTracker = () => {
     { key: 'alcohol', label: 'Alcohol', ideal: 'Lower' }
   ];
 
-  useEffect(() => {
-    fetchLifestyleData();
-    fetchStats();
-  }, []);
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
+  const handleCloseSnackbar = () => {
+    setError(null);
+    setSuccess(null);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'notes' ? value : Number(value)
+    }));
+  };
 
   const fetchLifestyleData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:8000/api/lifestyle-data/');
+      const response = await axios.get('http://localhost:8000/api/lifestyle-data/', {
+        withCredentials: true
+      });
       setLifestyleData(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to fetch lifestyle data');
@@ -66,7 +80,9 @@ const LifestyleTracker = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/lifestyle-stats/');
+      const response = await axios.get('http://localhost:8000/api/lifestyle-stats/', {
+        withCredentials: true
+      });
       setStats(response.data);
     } catch (err) {
       console.error('Failed to fetch stats:', err);
@@ -78,8 +94,9 @@ const LifestyleTracker = () => {
     try {
       setLoading(true);
       const response = await axios.post(
-        '/api/lifestyle/lifestyle_data/',
-        formData
+        'http://localhost:8000/api/lifestyle-stats/',
+        formData,
+        { withCredentials: true }
       );
 
       setSuccess('Lifestyle data submitted successfully!');
@@ -109,23 +126,6 @@ const LifestyleTracker = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'notes' ? value : Number(value)
-    }));
-  };
-
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-  };
-
-  const handleCloseSnackbar = () => {
-    setError(null);
-    setSuccess(null);
   };
 
   const renderForm = () => (
@@ -337,6 +337,11 @@ const LifestyleTracker = () => {
     );
   };
 
+  useEffect(() => {
+    fetchLifestyleData();
+    fetchStats();
+  }, []);
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
@@ -372,6 +377,5 @@ const LifestyleTracker = () => {
     </Box>
   );
 };
-
 
 export default LifestyleTracker;

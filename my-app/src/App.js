@@ -12,8 +12,10 @@ import HealthcareProfessionals from './pages/HealthcareProfessionals';
 import SignUp from './pages/Signup';
 import Services from './pages/Services';
 import Login from './pages/Login';
+import ProtectedRoute from './pages/ProtectedRoute';
 import { AuthProvider } from './pages/context/AuthContext';
 import { useState } from 'react';
+import Layout from './pages/Layout';
 
 function App() {
   const isAuthenticated = localStorage.getItem('authToken');
