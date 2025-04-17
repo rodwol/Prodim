@@ -158,6 +158,7 @@ def generate_recommendations(brain_health_score, lifestyle_data):
 
 from rest_framework.permissions import AllowAny
 @api_view(['POST', 'GET'])
+@csrf_exempt
 @permission_classes([AllowAny])
 def signup_view(request):
 

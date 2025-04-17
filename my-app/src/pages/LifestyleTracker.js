@@ -80,7 +80,7 @@ const LifestyleTracker = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/lifestyle-stats/', {
+      const response = await axios.get('http://localhost:8000/api/lifestyle-data/', {
         withCredentials: true
       });
       setStats(response.data);
@@ -94,7 +94,7 @@ const LifestyleTracker = () => {
     try {
       setLoading(true);
       const response = await axios.post(
-        'http://localhost:8000/api/lifestyle-stats/',
+        'http://localhost:8000/api/lifestyle-data/',
         formData,
         { withCredentials: true }
       );
