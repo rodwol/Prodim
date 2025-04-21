@@ -149,10 +149,9 @@ SESSION_COOKIE_SECURE = True
 DEBUG = False  # Disable debug mode in production
 ALLOWED_HOSTS = ['*']  # Allow all hosts (update later with your Render URL)
 
-""" # Add these for Render
-import dj_database_url
 DATABASES = {
-    'default': dj_database_url.config(default=os.getenv('DATABASE_URL')) )"""
+    'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
+}
 
 # Static files (CSS, JS, images)
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
